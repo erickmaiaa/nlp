@@ -318,9 +318,24 @@ python scripts/download_resources.py
 
 ### Notebook (recommended)
 
+First provision the environment with uv (this creates `.venv` and installs
+everything, including the Jupyter kernel):
+
+```bash
+uv sync --extra dev
+uv run python scripts/download_resources.py   # NLTK data + spaCy model
+```
+
+Then launch Jupyter:
+
 ```bash
 uv run jupyter lab notebooks/main.ipynb     # or: uv run jupyter notebook
 ```
+
+> **In VSCode / Cursor:** open `notebooks/main.ipynb` and select this project's
+> `.venv` as the kernel (the **Python (nlp-toolkit)** kernel). Don't `pip install`
+> into a hand-made venv — let `uv sync` manage packages so the environment stays
+> reproducible.
 
 Run the cells top-to-bottom. The first code cell bootstraps the import path,
 logging, seeding and resources; each subsequent cell solves one exercise.
