@@ -1,31 +1,549 @@
-# Natural Language Processing (NLP) Learning Journey
+<!-- markdownlint-disable MD033 MD041 -->
+<div align="center">
 
-Throughout this Natural Language Processing (NLP) course, I had the opportunity to dive into one of the most fascinating fields of artificial intelligence. Below, I share some of the key lessons and learnings I gained throughout the course:
+# 🧠 NLP Toolkit
 
-## 1. Introduction to NLP
-- Understanding the fundamental concepts of NLP and its importance in various applications.
-- Grasping the typical text processing pipeline, including tokenization, lemmatization, and syntactic analysis.
+**A production-grade, modular toolkit for classic Natural Language Processing — refactored out of a single coursework notebook into typed, tested, reusable Python.**
 
-## 2. Language Models
-- Exploring classical language models such as n-gram models.
-- Introduction to neural network-based language models like transformer-based language models.
+[![Python](https://img.shields.io/badge/python-3.12+-blue.svg)](#prerequisites)
+[![uv](https://img.shields.io/badge/packaged%20with-uv-de5fe9.svg)](https://docs.astral.sh/uv/)
+[![Tests](https://img.shields.io/badge/tests-21%20passing-brightgreen.svg)](#testing)
+[![Lint: ruff](https://img.shields.io/badge/lint-ruff-46a2f1.svg)](https://docs.astral.sh/ruff/)
+[![Types: mypy](https://img.shields.io/badge/types-mypy-blue.svg)](https://mypy-lang.org/)
+[![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
 
-## 3. Text Preprocessing
-- Learning text preprocessing techniques, including stop words removal, text normalization, and vectorization.
+</div>
 
-## 4. Feature Extraction
-- Identifying and extracting relevant features for specific NLP tasks such as sentiment analysis, text classification, and text generation.
+---
 
-## 5. Practical Applications
-- Implementing NLP algorithms in practical projects, such as sentiment analysis on social media, document classification, and chatbots.
+## Table of Contents
 
-## 6. Model Evaluation
-- Evaluating the performance of NLP models using appropriate metrics such as precision, recall, and F1-score.
-- Understanding common challenges and pitfalls in evaluating NLP models.
+- [Overview](#overview)
+- [The Problem It Solves](#the-problem-it-solves)
+- [Features](#features)
+- [Architecture](#architecture)
+- [Project Structure](#project-structure)
+- [Application Flow](#application-flow)
+- [Technologies & Rationale](#technologies--rationale)
+- [Prerequisites](#prerequisites)
+- [Installation](#installation)
+- [Running the Application](#running-the-application)
+- [Usage Examples](#usage-examples)
+- [Configuration & Environment Variables](#configuration--environment-variables)
+- [Testing](#testing)
+- [Extending the Project](#extending-the-project)
+- [Conventions & Best Practices](#conventions--best-practices)
+- [Reproducibility](#reproducibility)
+- [Troubleshooting](#troubleshooting)
+- [Roadmap & Future Improvements](#roadmap--future-improvements)
+- [Contributing](#contributing)
+- [License](#license)
 
-## 7. Tools and Libraries
-- Getting familiar with popular NLP libraries such as NLTK, spaCy, and transformers.
-- Using text processing and data analysis tools like Jupyter Notebooks and visualization libraries.
+---
 
-## Conclusion
-This course provided a solid foundation for exploring and applying advanced Natural Language Processing techniques.
+## Overview
+
+This repository implements eight classic NLP tasks over the **NLTK Gutenberg
+corpus** and a small set of bundled local documents (product reviews, news
+texts, sentiment lexicons):
+
+1. Per-document corpus statistics (word/sentence counts, vocabulary richness).
+2. Whole-corpus analysis (largest/smallest document, frequency distributions).
+3. Regular-expression word search.
+4. Text normalization → stemming → lemmatization → POS tagging.
+5. Stopword removal.
+6. Named-entity recognition (spaCy).
+7. Lexicon-based sentiment polarity.
+8. TF-IDF term ranking.
+
+The project began life as a single exploratory Jupyter notebook. It has been
+**refactored into a layered, typed and unit-tested package** (`nlp_toolkit`),
+while the notebook remains as a thin orchestrator that simply wires inputs to the
+toolkit and displays results.
+
+## The Problem It Solves
+
+Exploratory NLP notebooks are great for learning but quickly become unmaintainable:
+logic is duplicated cell-by-cell, state leaks through global variables, there are
+no tests, paths and constants are hard-coded, and nothing is reusable outside the
+notebook. **This project demonstrates how to turn such a notebook into
+production-quality software** without changing what it computes:
+
+- Reusable, importable functions instead of copy-pasted cells.
+- Centralized, environment-aware configuration (no magic values).
+- A dependency-free unit-test suite that runs in milliseconds.
+- Structured logging, type hints, docstrings and a documented architecture.
+
+The result is equally suitable as a **learning reference for clean NLP
+engineering** and as a **starter skeleton** for real text-processing pipelines.
+
+## Features
+
+- 🧱 **Layered, modular package** — one responsibility per module.
+- 🧪 **21 dependency-free unit tests** — core logic verified without downloading
+  NLTK/spaCy data.
+- ⚙️ **Centralized config** via an immutable, cached `Settings` dataclass with
+  `.env` overrides.
+- 🚀 **Performance-minded** — `frozenset` lookups, `collections.Counter`,
+  compiled regexes, cached resource loading, deferred heavy imports.
+- 🔁 **Reproducible** — single-call seeding and pinned dependencies.
+- 📓 **Notebook as orchestrator** — readable, no business logic inside cells.
+
+## Architecture
+
+The code follows **Separation of Concerns** and a light **Clean Architecture**
+layout. Each NLP stage is an independent, testable module; cross-cutting concerns
+(configuration, logging, resource bootstrap, reproducibility) sit alongside the
+layers and are consumed by all of them.
+
+```mermaid
+flowchart TD
+    subgraph Orchestration
+        NB[notebooks/main.ipynb]
+    end
+
+    subgraph Ingestion
+        DATA[data/loaders.py<br/>files, lexicons, corpora]
+    end
+
+    subgraph Preprocessing
+        PRE[preprocessing/text.py<br/>normalize · stopwords · stem · lemmatize]
+    end
+
+    subgraph Analysis & Features
+        STATS[analysis/corpus_stats.py]
+        REGEX[analysis/regex_search.py]
+        FREQ[analysis/frequency.py]
+        TFIDF[features/tfidf.py]
+        NER[nlp/ner.py]
+        SENT[sentiment/lexicon.py]
+    end
+
+    subgraph Cross-cutting
+        CFG[config.py]
+        LOG[logging_config.py]
+        RES[resources.py]
+        SEED[utils/reproducibility.py]
+    end
+
+    NB --> DATA --> PRE
+    PRE --> STATS & REGEX & FREQ & TFIDF & NER & SENT
+    NB --> STATS & REGEX & FREQ & TFIDF & NER & SENT
+
+    CFG -.-> DATA & PRE & RES & SEED & TFIDF
+    LOG -.-> DATA & PRE & TFIDF & SEED
+    RES -.-> NER
+    SEED -.-> NB
+```
+
+**How the components interact**
+
+| Component | Responsibility | Depends on |
+|-----------|----------------|------------|
+| `config` | Single source of truth for paths, seeds, model names, tunables | — |
+| `logging_config` | Idempotent structured logging setup | — |
+| `resources` | Idempotent, cached NLTK-data / spaCy-model bootstrap | `config` |
+| `data` | All file & corpus I/O (text, CSV lexicons, reviews, Gutenberg) | `config` |
+| `preprocessing` | Token normalization, stopwords, stemming, lemmatization | `config` |
+| `analysis` | Corpus statistics, regex search, frequency distributions | `preprocessing` |
+| `features` | TF-IDF vectorization & top-term ranking | (sklearn, numpy) |
+| `nlp` | spaCy named-entity recognition | `resources` |
+| `sentiment` | Lexicon-based polarity scoring | — (tokenizer injectable) |
+| `utils` | Reproducibility (seeding) | `config` |
+
+> **Design principle:** heavy third-party imports (`nltk`, `spacy`, `sklearn`,
+> `numpy`) are deferred to *call time*, so `import nlp_toolkit` is fast and
+> side-effect-free, and the pure-logic modules stay unit-testable.
+
+## Project Structure
+
+```text
+nlp/
+├── notebooks/
+│   ├── main.ipynb              # Thin orchestrator: inputs → toolkit → output
+│   └── data/                   # Bundled corpora & lexicons (inputs)
+├── src/
+│   └── nlp_toolkit/            # The installable package
+│       ├── __init__.py
+│       ├── config.py           # Centralized, env-aware settings (no magic values)
+│       ├── logging_config.py   # Structured logging setup
+│       ├── resources.py        # Idempotent NLTK/spaCy bootstrap (cached)
+│       ├── data/               # File & corpus loading (text, CSV, Gutenberg)
+│       ├── preprocessing/      # Normalize · stopwords · stem · lemmatize
+│       ├── analysis/           # Corpus stats · regex search · frequency
+│       ├── features/           # TF-IDF ranking
+│       ├── nlp/                # spaCy named-entity recognition
+│       ├── sentiment/          # Lexicon-based polarity
+│       └── utils/              # Reproducibility helpers
+├── tests/                      # pytest suite (dependency-free unit tests)
+├── scripts/
+│   └── download_resources.py   # One-shot NLTK data + spaCy model downloader
+├── docs/
+│   └── ARCHITECTURE.md         # Design decisions & preserved behaviour
+├── outputs/                    # Generated artifacts (git-ignored)
+├── .env.example                # Documented environment-variable template
+├── .python-version             # Pins Python 3.12 for uv
+├── pyproject.toml              # Dependencies + packaging + pytest/ruff/mypy config
+├── uv.lock                     # Fully-resolved, reproducible dependency lock
+├── requirements.txt            # pip fallback (exported from uv.lock)
+├── requirements-dev.txt        # pip fallback incl. dev tools (exported)
+└── README.md
+```
+
+**Folder responsibilities**
+
+| Folder | Responsibility |
+|--------|----------------|
+| `notebooks/` | Human-facing orchestration; no business logic. |
+| `notebooks/data/` | Read-only input corpora and lexicons. |
+| `src/nlp_toolkit/` | All reusable, importable, tested logic. |
+| `tests/` | Automated verification of the package. |
+| `scripts/` | Operational one-off commands (resource download). |
+| `docs/` | Architecture and decision records. |
+| `outputs/` | Generated results (ignored by git). |
+
+## Application Flow
+
+End-to-end, a typical run looks like this:
+
+```mermaid
+sequenceDiagram
+    participant U as User / Notebook
+    participant C as config.get_settings()
+    participant R as resources.ensure_nltk_data / load_spacy
+    participant D as data.loaders
+    participant P as preprocessing.text
+    participant A as analysis / features / nlp / sentiment
+
+    U->>C: load settings (.env, paths, seed)
+    U->>R: ensure NLTK data + spaCy model (cached, idempotent)
+    U->>D: load corpus / lexicons / reviews
+    D-->>U: tokens / text / frozensets
+    U->>P: normalize → stopwords → stem/lemmatize
+    P-->>U: clean tokens
+    U->>A: compute stats / regex / TF-IDF / NER / sentiment
+    A-->>U: typed results (dataclasses, Counters, dicts)
+    U->>U: display / log / persist to outputs/
+```
+
+1. **Configuration** is loaded once (cached), reading optional `.env` overrides.
+2. **Resources** (NLTK data, spaCy model) are downloaded only if missing.
+3. **Ingestion** reads corpora and lexicons through `data.loaders`.
+4. **Preprocessing** normalizes and cleans tokens.
+5. **Analysis/Features** produce typed results.
+6. The **orchestrator** displays them (and may persist to `outputs/`).
+
+## Technologies & Rationale
+
+| Technology | Why it's used |
+|------------|---------------|
+| **Python 3.12+** | Modern typing (`X \| None`, `slots=True` dataclasses); required by the latest NumPy 2.5. |
+| **uv** | Fast, reproducible package & environment manager. Resolves and locks the full dependency tree (`uv.lock`), installs in seconds, and manages the Python interpreter for you. |
+| **NLTK** | Provides the Gutenberg corpus, tokenizers, stopwords, WordNet lemmatizer, Porter stemmer and POS tagger used across exercises. |
+| **spaCy** (`en_core_web_sm`) | Fast, accurate named-entity recognition (exercise 6). |
+| **scikit-learn** | `TfidfVectorizer` for robust TF-IDF feature extraction (exercise 8). |
+| **NumPy** | Efficient array sorting for TF-IDF top-term selection. |
+| **python-dotenv** | Twelve-factor configuration via `.env` without hard-coding. |
+| **pytest** | Concise, fixture-driven testing; suite is dependency-free by design. |
+| **ruff** | Extremely fast linter + import sorter (replaces flake8/isort). |
+| **mypy** | Static type checking to catch contract errors before runtime. |
+
+## Prerequisites
+
+- **[uv](https://docs.astral.sh/uv/)** (recommended) — the project's package
+  manager. It will download and pin the correct Python for you, so you don't even
+  need Python pre-installed.
+  ```bash
+  # Install uv (see https://docs.astral.sh/uv/getting-started/installation/)
+  # macOS / Linux:
+  curl -LsSf https://astral.sh/uv/install.sh | sh
+  # Windows (PowerShell):
+  powershell -ExecutionPolicy ByPass -c "irm https://astral.sh/uv/install.ps1 | iex"
+  ```
+- **Python 3.12+** — pinned in `.python-version` (3.12) and provisioned
+  automatically by uv. NumPy 2.5+ requires 3.12, so older interpreters are not
+  supported.
+- ~600 MB free disk for the dependency stack, NLTK data and the spaCy model.
+- Internet access on first run (to download dependencies and resources).
+
+> A `pip` fallback is provided for environments without uv — see
+> [Installing with pip](#installing-with-pip).
+
+## Installation
+
+The recommended workflow uses **uv**, which reads `pyproject.toml` + `uv.lock`
+and creates a fully reproducible environment in `.venv`:
+
+```bash
+# 1. Clone and enter the project
+git clone <your-repo-url> nlp && cd nlp
+
+# 2. Create the environment and install everything from the lockfile
+#    (uv provisions Python 3.12 automatically if needed)
+uv sync --extra dev          # runtime + dev tools
+# or, runtime only:
+uv sync
+
+# 3. Download NLP resources (NLTK data + spaCy model)
+uv run python scripts/download_resources.py
+```
+
+That's it — `uv sync` installs the exact, locked versions (no manual
+`venv`/`activate` step needed). To update to newer releases later:
+
+```bash
+uv lock --upgrade            # re-resolve to the latest compatible versions
+uv sync --extra dev          # apply them
+```
+
+### Installing with pip
+
+If you cannot use uv, install the pinned, lockfile-exported requirements:
+
+```bash
+python -m venv .venv
+# Windows (PowerShell): .venv\Scripts\Activate.ps1
+# Unix / macOS:         source .venv/bin/activate
+
+pip install -r requirements.txt        # runtime only
+pip install -r requirements-dev.txt    # + dev tools
+python scripts/download_resources.py
+```
+
+> `requirements*.txt` are **generated from `uv.lock`** (via `uv export`); treat
+> `pyproject.toml` + `uv.lock` as the source of truth and regenerate them with
+> `uv export` after changing dependencies.
+
+## Running the Application
+
+### Notebook (recommended)
+
+```bash
+uv run jupyter lab notebooks/main.ipynb     # or: uv run jupyter notebook
+```
+
+Run the cells top-to-bottom. The first code cell bootstraps the import path,
+logging, seeding and resources; each subsequent cell solves one exercise.
+
+### Download resources only
+
+```bash
+uv run python scripts/download_resources.py
+```
+
+### Use the toolkit from your own code
+
+See [Usage Examples](#usage-examples) below.
+
+## Usage Examples
+
+**Corpus statistics**
+
+```python
+from nltk.corpus import gutenberg
+from nlp_toolkit.analysis import compute_corpus_stats
+
+stats = compute_corpus_stats(
+    gutenberg.words("shakespeare-hamlet.txt"),
+    gutenberg.sents("shakespeare-hamlet.txt"),
+)
+print(stats.total_words, stats.unique_words, round(stats.words_per_sentence, 2))
+```
+
+**Lexicon-based sentiment**
+
+```python
+from nlp_toolkit.config import get_settings
+from nlp_toolkit.data import load_lexicon
+from nlp_toolkit.sentiment import LexiconSentimentAnalyzer, SentimentLexicon
+
+s = get_settings()
+analyzer = LexiconSentimentAnalyzer(
+    SentimentLexicon(
+        positive=load_lexicon(s.positive_words_path),
+        negative=load_lexicon(s.negative_words_path),
+    )
+)
+print(analyzer.polarity("The pictures are razor-sharp. I love this camera."))
+```
+
+**Named-entity recognition**
+
+```python
+from nlp_toolkit.data import load_text_file
+from nlp_toolkit.nlp import count_entities_by_label
+from nlp_toolkit.config import get_settings
+
+text = load_text_file(get_settings().data_dir / "french-revolution.txt")
+labels = count_entities_by_label(text)
+print(labels["GPE"], labels["PERSON"])
+```
+
+**TF-IDF top terms**
+
+```python
+from nltk.corpus import gutenberg
+from nlp_toolkit.preprocessing import preprocess_for_tfidf
+from nlp_toolkit.features import top_tfidf_words
+
+texts = ["carroll-alice.txt", "melville-moby_dick.txt"]
+docs = [preprocess_for_tfidf(gutenberg.raw(t)) for t in texts]
+print(top_tfidf_words(docs, labels=texts, top_n=5))
+```
+
+## Configuration & Environment Variables
+
+All tunables live in [`src/nlp_toolkit/config.py`](src/nlp_toolkit/config.py) as
+an immutable, cached `Settings` dataclass. Override any of them with environment
+variables (optionally via a `.env` file — copy [`.env.example`](.env.example)).
+**Relative directory paths are resolved against the repository root**, so the
+same `.env` works from a notebook, a script or CI.
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `NLP_DATA_DIR` | `notebooks/data` | Location of input corpora/lexicons (relative → repo root). |
+| `NLP_OUTPUT_DIR` | `outputs` | Where generated artifacts are written (auto-created). |
+| `NLP_RANDOM_SEED` | `42` | Seed for all RNGs (reproducibility). |
+| `NLP_LANGUAGE` | `english` | Stopword / model language. |
+| `NLP_SPACY_MODEL` | `en_core_web_sm` | spaCy pipeline used for NER. |
+| `NLP_ENCODING` | `utf-8` | Default text encoding for file I/O. |
+| `NLP_TOP_N` | `5` | Default number of "top" items reported. |
+
+```bash
+cp .env.example .env   # then edit as needed
+```
+
+## Testing
+
+```bash
+uv run pytest                       # run the full suite (21 tests)
+uv run pytest --cov=nlp_toolkit     # with coverage
+uv run ruff check .                 # lint + import order
+uv run mypy                         # static type checking
+```
+
+> Using pip instead of uv? Drop the `uv run` prefix once the virtual environment
+> is activated.
+
+**What kinds of tests exist**
+
+- **Unit tests** (`tests/test_*.py`) cover the pure-logic modules:
+  preprocessing, corpus statistics, regex search, frequency, sentiment scoring
+  and data loaders.
+- They are **intentionally dependency-free**: tokenizers are injected and the
+  cached stopword set is monkey-patched, so no NLTK data or spaCy model is
+  required and the suite runs in milliseconds.
+- **Integration tests** (against real NLTK/spaCy/sklearn) are **not yet
+  included** — see the [Roadmap](#roadmap--future-improvements). The notebook
+  currently serves as a manual end-to-end check.
+
+**Interpreting results:** a passing run ends with a line of dots and
+`21 passed`. A failure shows the failing test, the asserted vs. actual values and
+a traceback pointing at the offending module/line.
+
+## Extending the Project
+
+The architecture makes adding a new capability predictable. To add, say, a
+**readability-metrics** feature:
+
+1. **Create the module** under the right layer, e.g.
+   `src/nlp_toolkit/features/readability.py`.
+2. **Write pure, typed functions** that accept plain inputs (token lists or
+   text) and return typed results (dataclass / `dict` / `Counter`). Defer heavy
+   imports to call time.
+3. **Read configuration** via `get_settings()` instead of hard-coding values;
+   add new tunables to `Settings` (and `.env.example`) if needed.
+4. **Export the public API** in the sub-package `__init__.py`.
+5. **Add unit tests** in `tests/`, injecting any tokenizer/dependency so the
+   test stays dependency-free.
+6. **Wire it into the notebook** as a thin orchestration cell.
+7. **Run** `ruff check . && mypy && pytest` before committing.
+
+```mermaid
+flowchart LR
+    A[New module in correct layer] --> B[Pure, typed functions]
+    B --> C[Use get_settings for config]
+    C --> D[Export in __init__.py]
+    D --> E[Add dependency-free tests]
+    E --> F[Wire into notebook]
+    F --> G[ruff + mypy + pytest]
+```
+
+## Conventions & Best Practices
+
+- **Layout:** `src/` layout; one responsibility per module; public API exported
+  via each package's `__init__.py`.
+- **Typing:** full type hints; `from __future__ import annotations`; immutable
+  `@dataclass(frozen=True, slots=True)` for value objects.
+- **Naming:** `snake_case` for functions/variables/modules, `PascalCase` for
+  classes, `UPPER_SNAKE` for constants; descriptive names over abbreviations
+  (the old `sc_`/`sh_`/`sm_` globals are gone).
+- **Docstrings:** Google-style (`Args` / `Returns` / `Raises`) on public
+  functions and classes.
+- **Logging over printing:** library code logs via `logging_config`; only the
+  notebook prints for display.
+- **No magic values:** all constants/paths come from `config`.
+- **Dependency injection:** tokenizers and lexicons are injected to keep core
+  logic testable and decoupled.
+- **Style/quality gates:** `ruff` (line length 100, rules `E,F,I,UP,B,C4,SIM`)
+  and `mypy` are configured in `pyproject.toml`.
+
+## Reproducibility
+
+`nlp_toolkit.utils.seed_everything()` fixes the Python, `PYTHONHASHSEED` and
+NumPy seeds in one call (default `42`, configurable via `NLP_RANDOM_SEED`).
+Dependencies are fully pinned in `uv.lock` (and the exported `requirements*.txt`),
+and resource bootstrap is deterministic and idempotent.
+
+## Troubleshooting
+
+| Symptom | Fix |
+|---------|-----|
+| `RuntimeError: spaCy model ... is not installed` | `uv run python -m spacy download en_core_web_sm` |
+| `LookupError` from NLTK | `uv run python scripts/download_resources.py` |
+| `uv sync` fails to remove `.venv` (Access denied, Windows) | Close any process using it (IDE Python/Jupyter kernel), then re-run `uv sync`. |
+| Resolution error mentioning Python version | Ensure Python **3.12+** (uv reads `.python-version`); run `uv python install 3.12`. |
+| `ModuleNotFoundError: nlp_toolkit` | Run via `uv run ...` from the repo root, or `uv pip install -e .` |
+| Notebook can't import the package | Launch Jupyter from the repo root so `../src` resolves |
+
+## Roadmap & Future Improvements
+
+- [ ] Add **integration tests** (marked) exercising real NLTK/spaCy/sklearn paths.
+- [ ] Add **CI** (GitHub Actions) running `ruff`, `mypy` and `pytest` with coverage gates.
+- [ ] Replace the lexicon sentiment heuristic with **VADER / transformer** models and proper negation scope.
+- [ ] Use **POS-aware spaCy lemmatization** instead of WordNet's default-noun lemma.
+- [ ] Persist exercise outputs to `outputs/` as JSON/CSV for diffable runs.
+- [ ] Optional **CLI** (`python -m nlp_toolkit ...`) wrapping each task.
+- [ ] Package and publish to a private index.
+
+> See [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) for design decisions and the
+> behaviour intentionally preserved from the original coursework (e.g. exercise 4
+> stem-then-lemmatize, exercise 7 parity-based negation rule) and the bug fixed
+> in exercise 5 (word count vs. character count).
+
+## Contributing
+
+Contributions are welcome! Suggested workflow:
+
+1. **Fork** and create a feature branch: `git checkout -b feature/my-change`.
+2. Set up the dev environment: `uv sync --extra dev`.
+3. Make your change following the [conventions](#conventions--best-practices) and
+   the [extension guide](#extending-the-project).
+4. Ensure quality gates pass:
+   ```bash
+   uv run ruff check . && uv run mypy && uv run pytest
+   ```
+   If you changed dependencies, run `uv lock` and regenerate the pip fallbacks:
+   `uv export --no-hashes --no-dev --no-emit-project -o requirements.txt` and
+   `uv export --no-hashes --extra dev --no-emit-project -o requirements-dev.txt`.
+5. Write or update **tests** and **docstrings** for any new behaviour.
+6. Use clear, conventional commit messages (e.g. `feat: add readability metrics`).
+7. Open a **pull request** describing the change, the motivation and any
+   trade-offs.
+
+Please keep business logic out of the notebook and inside the package, and keep
+new unit tests dependency-free where possible.
+
+## License
+
+Released under the **MIT License** — see [LICENSE](LICENSE) for the full text.
