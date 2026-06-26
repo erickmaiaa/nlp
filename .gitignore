@@ -1,5 +1,31 @@
-Include
-Lib
-Scripts
-share
+# Virtual environments
+.venv/
+Include/
+Lib/
+Scripts/
+share/
 pyvenv.cfg
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.eggs/
+build/
+dist/
+
+# Tooling caches
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+
+# Environment / secrets
+.env
+
+# Notebook checkpoints
+.ipynb_checkpoints/
+
+# Project outputs
+outputs/

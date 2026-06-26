@@ -1,0 +1,54 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "nlp-toolkit"
+version = "1.0.0"
+description = "A small, production-grade toolkit for classic NLP coursework (statistics, regex, NER, TF-IDF, sentiment)."
+readme = "README.md"
+requires-python = ">=3.12"
+license = { file = "LICENSE" }
+authors = [{ name = "Erick Maia", email = "erick.tech.oliveira@gmail.com" }]
+keywords = ["nlp", "nltk", "spacy", "tfidf", "sentiment-analysis"]
+
+dependencies = [
+    "nltk>=3.9.4",
+    "spacy>=3.8.14",
+    "scikit-learn>=1.9.0",
+    "numpy>=2.5.0",
+    "python-dotenv>=1.2.2",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=9.1.1",
+    "pytest-cov>=7.1.0",
+    "ruff>=0.15.20",
+    "mypy>=2.1.0",
+    "jupyter>=1.1.1",
+    "ipykernel>=6.29.5",
+]
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-q"
+pythonpath = ["src"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+src = ["src", "tests"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B", "C4", "SIM"]
+
+[tool.mypy]
+python_version = "3.12"
+packages = ["nlp_toolkit"]
+mypy_path = "src"
+ignore_missing_imports = true
+warn_unused_ignores = true
