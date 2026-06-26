@@ -36,7 +36,6 @@
 - [Reproducibility](#reproducibility)
 - [Troubleshooting](#troubleshooting)
 - [Roadmap & Future Improvements](#roadmap--future-improvements)
-- [Contributing](#contributing)
 - [License](#license)
 
 ---
@@ -535,29 +534,6 @@ and resource bootstrap is deterministic and idempotent.
 > behaviour intentionally preserved from the original coursework (e.g. exercise 4
 > stem-then-lemmatize, exercise 7 parity-based negation rule) and the bug fixed
 > in exercise 5 (word count vs. character count).
-
-## Contributing
-
-Contributions are welcome! Suggested workflow:
-
-1. **Fork** and create a feature branch: `git checkout -b feature/my-change`.
-2. Set up the dev environment: `uv sync --extra dev`.
-3. Make your change following the [conventions](#conventions--best-practices) and
-   the [extension guide](#extending-the-project).
-4. Ensure quality gates pass:
-   ```bash
-   uv run ruff check . && uv run mypy && uv run pytest
-   ```
-   If you changed dependencies, run `uv lock` and regenerate the pip fallbacks:
-   `uv export --no-hashes --no-dev --no-emit-project -o requirements.txt` and
-   `uv export --no-hashes --extra dev --no-emit-project -o requirements-dev.txt`.
-5. Write or update **tests** and **docstrings** for any new behaviour.
-6. Use clear, conventional commit messages (e.g. `feat: add readability metrics`).
-7. Open a **pull request** describing the change, the motivation and any
-   trade-offs.
-
-Please keep business logic out of the notebook and inside the package, and keep
-new unit tests dependency-free where possible.
 
 ## License
 
