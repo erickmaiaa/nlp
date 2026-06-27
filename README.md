@@ -6,7 +6,7 @@
 **A production-grade, modular toolkit for classic Natural Language Processing — refactored out of a single coursework notebook into typed, tested, reusable Python.**
 
 [![Python](https://img.shields.io/badge/python-3.12+-blue.svg)](#prerequisites)
-[![uv](https://img.shields.io/badge/packaged%20with-uv-de5fe9.svg)](https://docs.astral.sh/uv/)
+[![pip](https://img.shields.io/badge/packaged%20with-pip-3776ab.svg)](https://pip.pypa.io/)
 [![Tests](https://img.shields.io/badge/tests-21%20passing-brightgreen.svg)](#testing)
 [![Lint: ruff](https://img.shields.io/badge/lint-ruff-46a2f1.svg)](https://docs.astral.sh/ruff/)
 [![Types: mypy](https://img.shields.io/badge/types-mypy-blue.svg)](https://mypy-lang.org/)
@@ -175,17 +175,13 @@ nlp/
 │       ├── sentiment/          # Lexicon-based polarity
 │       └── utils/              # Reproducibility helpers
 ├── tests/                      # pytest suite (dependency-free unit tests)
-├── scripts/
-│   └── download_resources.py   # One-shot NLTK data + spaCy model downloader
 ├── docs/
 │   └── ARCHITECTURE.md         # Design decisions & preserved behaviour
 ├── outputs/                    # Generated artifacts (git-ignored)
 ├── .env.example                # Documented environment-variable template
-├── .python-version             # Pins Python 3.12 for uv
+├── .python-version             # Pins Python 3.12
 ├── pyproject.toml              # Dependencies + packaging + pytest/ruff/mypy config
-├── uv.lock                     # Fully-resolved, reproducible dependency lock
-├── requirements.txt            # pip fallback (exported from uv.lock)
-├── requirements-dev.txt        # pip fallback incl. dev tools (exported)
+├── requirements.txt            # Pinned dependencies (runtime + dev tools) for pip
 └── README.md
 ```
 
@@ -197,7 +193,6 @@ nlp/
 | `notebooks/data/` | Read-only input corpora and lexicons. |
 | `src/nlp_toolkit/` | All reusable, importable, tested logic. |
 | `tests/` | Automated verification of the package. |
-| `scripts/` | Operational one-off commands (resource download). |
 | `docs/` | Architecture and decision records. |
 | `outputs/` | Generated results (ignored by git). |
 
@@ -237,7 +232,7 @@ sequenceDiagram
 | Technology | Why it's used |
 |------------|---------------|
 | **Python 3.12+** | Modern typing (`X \| None`, `slots=True` dataclasses); required by the latest NumPy 2.5. |
-| **uv** | Fast, reproducible package & environment manager. Resolves and locks the full dependency tree (`uv.lock`), installs in seconds, and manages the Python interpreter for you. |
+| **pip** + **venv** | Standard, ubiquitous package & environment management. Installs the pinned dependency set from `requirements.txt` with no extra tooling. |
 | **NLTK** | Provides the Gutenberg corpus, tokenizers, stopwords, WordNet lemmatizer, Porter stemmer and POS tagger used across exercises. |
 | **spaCy** (`en_core_web_sm`) | Fast, accurate named-entity recognition (exercise 6). |
 | **scikit-learn** | `TfidfVectorizer` for robust TF-IDF feature extraction (exercise 8). |
@@ -249,92 +244,67 @@ sequenceDiagram
 
 ## Prerequisites
 
-- **[uv](https://docs.astral.sh/uv/)** (recommended) — the project's package
-  manager. It will download and pin the correct Python for you, so you don't even
-  need Python pre-installed.
-  ```bash
-  # Install uv (see https://docs.astral.sh/uv/getting-started/installation/)
-  # macOS / Linux:
-  curl -LsSf https://astral.sh/uv/install.sh | sh
-  # Windows (PowerShell):
-  powershell -ExecutionPolicy ByPass -c "irm https://astral.sh/uv/install.ps1 | iex"
-  ```
-- **Python 3.12+** — pinned in `.python-version` (3.12) and provisioned
-  automatically by uv. NumPy 2.5+ requires 3.12, so older interpreters are not
-  supported.
+- **Python 3.12+** — pinned in `.python-version` (3.12). NumPy 2.5+ requires
+  3.12, so older interpreters are not supported. Verify with `python --version`.
+- **pip** — bundled with modern Python (upgrade with
+  `python -m pip install --upgrade pip`).
 - ~600 MB free disk for the dependency stack, NLTK data and the spaCy model.
 - Internet access on first run (to download dependencies and resources).
 
-> A `pip` fallback is provided for environments without uv — see
-> [Installing with pip](#installing-with-pip).
-
 ## Installation
 
-The recommended workflow uses **uv**, which reads `pyproject.toml` + `uv.lock`
-and creates a fully reproducible environment in `.venv`:
+The project is installed with **pip** into a standard virtual environment. The
+pinned dependency set lives in `requirements.txt`:
 
 ```bash
 # 1. Clone and enter the project
 git clone <your-repo-url> nlp && cd nlp
 
-# 2. Create the environment and install everything from the lockfile
-#    (uv provisions Python 3.12 automatically if needed)
-uv sync --extra dev          # runtime + dev tools
-# or, runtime only:
-uv sync
-
-# 3. Download NLP resources (NLTK data + spaCy model)
-uv run python scripts/download_resources.py
-```
-
-That's it — `uv sync` installs the exact, locked versions (no manual
-`venv`/`activate` step needed). To update to newer releases later:
-
-```bash
-uv lock --upgrade            # re-resolve to the latest compatible versions
-uv sync --extra dev          # apply them
-```
-
-### Installing with pip
-
-If you cannot use uv, install the pinned, lockfile-exported requirements:
-
-```bash
+# 2. Create and activate a virtual environment (Python 3.12+)
 python -m venv .venv
 # Windows (PowerShell): .venv\Scripts\Activate.ps1
 # Unix / macOS:         source .venv/bin/activate
 
-pip install -r requirements.txt        # runtime only
-pip install -r requirements-dev.txt    # + dev tools
-python scripts/download_resources.py
+# 3. Install the pinned dependencies (runtime + dev tools)
+python -m pip install --upgrade pip
+pip install -r requirements.txt
+
+# 4. Download the spaCy model (NLTK data is fetched automatically on first run)
+python -m spacy download en_core_web_sm
 ```
 
-> `requirements*.txt` are **generated from `uv.lock`** (via `uv export`); treat
-> `pyproject.toml` + `uv.lock` as the source of truth and regenerate them with
-> `uv export` after changing dependencies.
+To work on the package itself, install it in editable mode so `nlp_toolkit`
+is importable from anywhere:
+
+```bash
+pip install -e .          # runtime only
+pip install -e ".[dev]"   # + dev tools (pytest, ruff, mypy, jupyter)
+```
+
+> **Resources:** NLTK corpora are downloaded automatically the first time the
+> notebook (or `nlp_toolkit.resources.ensure_nltk_data`) runs. Only the spaCy
+> model must be installed manually, with the command above.
+
+> `requirements.txt` holds fully-pinned versions for reproducible installs;
+> `pyproject.toml` declares the version ranges and is the source of truth when
+> adding or upgrading a dependency.
 
 ## Running the Application
 
 ### Notebook (recommended)
 
-First provision the environment with uv (this creates `.venv` and installs
-everything, including the Jupyter kernel):
+With the virtual environment activated and dependencies installed (see
+[Installation](#installation)), make sure the spaCy model is present and launch
+Jupyter (NLTK data downloads itself on first run):
 
 ```bash
-uv sync --extra dev
-uv run python scripts/download_resources.py   # NLTK data + spaCy model
-```
-
-Then launch Jupyter:
-
-```bash
-uv run jupyter lab notebooks/main.ipynb     # or: uv run jupyter notebook
+python -m spacy download en_core_web_sm   # one-time, if not already installed
+jupyter lab notebooks/main.ipynb          # or: jupyter notebook
 ```
 
 > **In VSCode / Cursor:** open `notebooks/main.ipynb` and select this project's
-> `.venv` as the kernel (the **Python (nlp-toolkit)** kernel). Don't `pip install`
-> into a hand-made venv — let `uv sync` manage packages so the environment stays
-> reproducible.
+> `.venv` as the kernel. Make sure you installed the dev extras
+> (`pip install -e ".[dev]"`) so the Jupyter kernel is available.
 
 Run the cells top-to-bottom. The first code cell bootstraps the import path,
 logging, seeding and resources; each subsequent cell solves one exercise.
@@ -342,7 +312,7 @@ logging, seeding and resources; each subsequent cell solves one exercise.
 ### Download resources only
 
 ```bash
-uv run python scripts/download_resources.py
+python -m spacy download en_core_web_sm   # spaCy model (NLTK data is automatic)
 ```
 
 ### Use the toolkit from your own code
@@ -430,14 +400,14 @@ cp .env.example .env   # then edit as needed
 ## Testing
 
 ```bash
-uv run pytest                       # run the full suite (21 tests)
-uv run pytest --cov=nlp_toolkit     # with coverage
-uv run ruff check .                 # lint + import order
-uv run mypy                         # static type checking
+pytest                       # run the full suite (21 tests)
+pytest --cov=nlp_toolkit     # with coverage
+ruff check .                 # lint + import order
+mypy                         # static type checking
 ```
 
-> Using pip instead of uv? Drop the `uv run` prefix once the virtual environment
-> is activated.
+> Run these with the virtual environment activated (and the dev extras
+> installed via `pip install -e ".[dev]"`).
 
 **What kinds of tests exist**
 
@@ -506,18 +476,18 @@ flowchart LR
 
 `nlp_toolkit.utils.seed_everything()` fixes the Python, `PYTHONHASHSEED` and
 NumPy seeds in one call (default `42`, configurable via `NLP_RANDOM_SEED`).
-Dependencies are fully pinned in `uv.lock` (and the exported `requirements*.txt`),
-and resource bootstrap is deterministic and idempotent.
+Dependencies are fully pinned in `requirements.txt`, and resource bootstrap is
+deterministic and idempotent.
 
 ## Troubleshooting
 
 | Symptom | Fix |
 |---------|-----|
-| `RuntimeError: spaCy model ... is not installed` | `uv run python -m spacy download en_core_web_sm` |
-| `LookupError` from NLTK | `uv run python scripts/download_resources.py` |
-| `uv sync` fails to remove `.venv` (Access denied, Windows) | Close any process using it (IDE Python/Jupyter kernel), then re-run `uv sync`. |
-| Resolution error mentioning Python version | Ensure Python **3.12+** (uv reads `.python-version`); run `uv python install 3.12`. |
-| `ModuleNotFoundError: nlp_toolkit` | Run via `uv run ...` from the repo root, or `uv pip install -e .` |
+| `RuntimeError: spaCy model ... is not installed` | `python -m spacy download en_core_web_sm` |
+| `LookupError` from NLTK | Re-run the notebook bootstrap cell, or call `python -c "from nlp_toolkit.resources import ensure_nltk_data; ensure_nltk_data()"` |
+| `pip install` fails to overwrite `.venv` (Access denied, Windows) | Close any process using it (IDE Python/Jupyter kernel), then recreate the venv. |
+| Resolution error mentioning Python version | Ensure Python **3.12+** (`python --version`); install 3.12 if older. |
+| `ModuleNotFoundError: nlp_toolkit` | Activate the venv and `pip install -e .` from the repo root |
 | Notebook can't import the package | Launch Jupyter from the repo root so `../src` resolves |
 
 ## Roadmap & Future Improvements
